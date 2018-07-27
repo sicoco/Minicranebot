@@ -1,6 +1,6 @@
 # MiniCraneBot
 
-![robot](/DSC_0386.JPG)
+<img src="DSC_0386.JPG" width="600" height="600"/>
 
 - basically a small mobile wheel-based platform with lightweight long robotic arm that can move around and pick things from far away without falling over.
 
