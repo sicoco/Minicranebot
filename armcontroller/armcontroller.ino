@@ -1,14 +1,18 @@
-#include <MPU6050_tockn.h>
+#include "MPU6050_tockn.h"
 #include <Wire.h>
 #include <MsTimer2.h>
 #include <AccelStepper.h>
 #include <Metro.h>
 #include "Position.h"
 #include <Servo.h>
+
 #define DEVICE_NAME "Arm"
 
 //Arm Control
 //Includes waist, shoulder, elbow, counterweight stepper and gripper servos and IMU@arm
+
+String inputString = "";
+boolean stringComplete = false;
 
 MPU6050 mpu6050(Wire);
 
@@ -30,7 +34,7 @@ const int max_elbow_sp = 1000;
 const int max_waist_sp = 1000;
 const int max_counterweight_sp = 1000;
 
-Metro spcontrolMetro = Metro(25);//25ms
+Metro spcontrolMetro = Metro(50);//50ms
 Metro poscontrolMetro = Metro(200);//200ms
 
 int waist_sp = 500;
@@ -85,6 +89,7 @@ boolean counterweight_init = false;
 
 void setup()
 {
+  inputString.reserve(20);
   Serial.begin(115200);
   Wire.begin();
   mpu6050.begin();
@@ -143,9 +148,9 @@ void getAngle()
   current_shoulder_value = (1 - filter_a) * current_shoulder_value + filter_a * analogRead(shoulder_potentiometer_pin);
   current_elbow_angle = map(current_elbow_value, 0, 1023, 0, 295) + elbow_offset;
   current_shoulder_angle = map(current_shoulder_value, 0, 1023, 300, 0) + shoulder_offset;
-//    mpu6050.update();
-//    current_waist_angle = mpu6050.getAngleZ();
-    current_counterweight_position = (float)counterweightstepper.currentPosition() * (2 * PI * 7 / 16 / 200);
+
+  current_waist_angle = mpu6050.getAngleZ();
+  current_counterweight_position = (float)counterweightstepper.currentPosition() * (2 * PI * 7 / 16 / 200);
 }
 
 void calccurPos()
@@ -163,6 +168,7 @@ void loop()
 {
   if (spcontrolMetro.check() == 1)
   {
+    mpu6050.update();
     //    Serial.println(current_elbow_angle);
     //    shoulderstepper.stop();
     //    elbowstepper.stop();
@@ -177,6 +183,82 @@ void loop()
     gripper_R.write(set_gripper_R);
   }
 
+
+  if (stringComplete)
+  {
+    if (inputString == "name?")
+    {
+      Serial.println(DEVICE_NAME);
+    }
+    else if (inputString == "power off")
+    {
+      elbowstepper.disableOutputs();
+    }
+    else if (inputString == "power on")
+    {
+      elbowstepper.enableOutputs();
+    }
+    else if (inputString == "pose reset")
+    {
+      Serial.println("Done");
+    }
+    else if (inputString == "w")
+    {
+      elbowstepper.move(500);
+    }
+    else if (inputString == "s")
+    {
+      elbowstepper.move(-500);
+    }
+    else if (inputString == "a")
+    {
+      shoulderstepper.move(500);
+    }
+    else if (inputString == "d")
+    {
+      shoulderstepper.move(-500);
+    }
+    else if (inputString == "z")
+    {
+      waiststepper.move(1000);
+    }
+    else if (inputString == "x")
+    {
+      waiststepper.move(-1000);
+    }
+    else if (inputString == "c")
+    {
+      counterweightstepper.move(1000);
+    }
+    else if (inputString == "v")
+    {
+      counterweightstepper.move(-1000);
+    }
+    else if (inputString == "t")
+    {
+      set_gripper_L += 20;
+    }
+    else if (inputString == "g")
+    {
+      set_gripper_L -= 20;
+    }
+    else if (inputString == "y")
+    {
+      set_gripper_R += 20;
+    }
+    else if (inputString == "h")
+    {
+      set_gripper_R -= 20;
+    }
+    else //received any illegal message, stop the motion
+    {
+
+    }
+    stringComplete = false;
+    inputString = "";
+  }
+
+
   shoulderstepper.run();
   elbowstepper.run();
   waiststepper.run();
@@ -186,57 +268,12 @@ void serialEvent()
 {
   while (Serial.available())
   {
-    char c = Serial.read();
-    switch (c)
-    {
-      case 'w':
-        elbowstepper.move(500);
-        break;
-      case 's':
-        elbowstepper.move(-500);
-        break;
-      case 'a':
-        shoulderstepper.move(500);
-        break;
-      case 'd':
-        shoulderstepper.move(-500);
-        break;
-      case 'z':
-        waiststepper.move(2000);
-        break;
-      case 'x':
-        waiststepper.move(-2000);
-        break;
-      case 'c':
-        counterweightstepper.move(1000);
-        break;
-      case 'v':
-        counterweightstepper.move(-1000);
-        break;
-      case 't':
-        set_gripper_L += 20;
-        break;
-      case 'g':
-        set_gripper_L -= 20;
-        break;
-      case 'y':
-        set_gripper_R += 20;
-        break;
-      case 'h':
-        set_gripper_R -= 20;
-        break;
-      case 'p':
-        elbowstepper.disableOutputs();
-        break;
-      case 'o':
-        elbowstepper.enableOutputs();
-        break;
-      case '\n':
-        break;
-      case '\r':
-        break;
-      default:
-        break;
+    char c = (char)Serial.read();
+    if (c == '\n' || c == '\r') {
+      stringComplete = true;
+    }
+    else {
+      inputString += c;
     }
   }
 }
