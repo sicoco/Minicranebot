@@ -93,7 +93,7 @@ void MPU6050::calcGyroOffsets(bool console){
 		Serial.print("Y : ");Serial.println(gyroYoffset);
 		Serial.print("Z : ");Serial.println(gyroZoffset);
 		Serial.println("Program will start after 3 seconds");
-    Serial.print("========================================");
+    Serial.println("========================================");
 		delay(3000);
 	}
 }

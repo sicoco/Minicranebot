@@ -42,9 +42,9 @@ void setup()
   inputString.reserve(15);
   Serial.begin(115200);
   Wire.begin();
+  Wire.setClock(400000);
   mpu6050.begin();
   mpu6050.calcGyroOffsets(true);
-  Serial.println();
   // Change these to suit your stepper if you want
   leftstepper.setEnablePin(8);
   leftstepper.setPinsInverted(false, false, true);

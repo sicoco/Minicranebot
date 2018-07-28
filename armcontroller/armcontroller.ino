@@ -90,6 +90,7 @@ void setup()
   inputString.reserve(20);
   Serial.begin(115200);
   Wire.begin();
+  Wire.setClock(400000);
   mpu6050.begin();
   mpu6050.calcGyroOffsets(true);
 
