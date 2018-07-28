@@ -16,8 +16,8 @@ String inputString = "";
 boolean stringComplete = false;
 
 // Define steppers and the pins it will use
-AccelStepper leftstepper(1, 2, 5);//X-axis DRV8825 16 microstep
-AccelStepper rightstepper(1, 3, 6); //Y-axis DRV8825 16 microstep
+AccelStepper leftstepper(1, 2, 5);//X-axis DRV8825 8 microstep
+AccelStepper rightstepper(1, 3, 6); //Y-axis DRV8825 8 microstep
 
 const int max_sp = 1000;
 
@@ -29,13 +29,13 @@ int right_sp;
 int set_left_speed = 0;
 int set_right_speed = 0;
 int set_speed = 0;
-int acceleration = 200;
+int acceleration = 100;
 boolean rotation = false;
 
 volatile float current_yaw = 0;
 float set_yaw = 0;
-float yaw_error_width = 1.0;
-float kp = 100.0;
+float yaw_error_width = 2.0;
+float kp = 20.0;
 
 void setup()
 {
@@ -44,6 +44,7 @@ void setup()
   Wire.begin();
   mpu6050.begin();
   mpu6050.calcGyroOffsets(true);
+  Serial.println();
   // Change these to suit your stepper if you want
   leftstepper.setEnablePin(8);
   leftstepper.setPinsInverted(false, false, true);
@@ -128,7 +129,7 @@ void loop()
   }
   if (stringComplete)
   {
-    float argyaw;
+    int argyaw;
     int argsp;
     if (sscanf(inputString.c_str(), "T%d", &argsp) == 1)//go forward or backward at certain speed. Yaw compensation will keep the same yaw angle while running
     {
@@ -147,9 +148,9 @@ void loop()
       }
       rotation = false;
     }
-    else if (sscanf(inputString.c_str(), "R%f %d", &argyaw, &argsp) == 2)//rotate with certain speed
+    else if (sscanf(inputString.c_str(), "R%d %d", &argyaw, &argsp) == 2)//rotate with certain speed
     {
-      set_yaw = argyaw;
+      set_yaw += (float)argyaw;
       if (argsp < max_sp && argsp > (-1) * max_sp)
       {
         set_speed = argsp;

@@ -19,8 +19,8 @@ MPU6050 mpu6050(Wire);
 // Define steppers and the pins it will use
 AccelStepper shoulderstepper(1, 2, 5);//X-axis DRV8825 Full step
 AccelStepper elbowstepper(1, 3, 6); //Y-axis DRV8825 Full step
-AccelStepper waiststepper(1, 4, 7); //Z-axis A4988  16 microstep
-AccelStepper counterweightstepper(1, 12, 13); //A-axis A4988 * 2 16 microstep
+AccelStepper waiststepper(1, 4, 7); //Z-axis A4988  8 microstep
+AccelStepper counterweightstepper(1, 12, 13); //A-axis A4988 * 2 8 microstep
 Servo gripper_L;
 Servo gripper_R;
 const int servogripper_L_pin = 9; //X-endstop
@@ -63,16 +63,16 @@ int set_shoulder_angle = 90;
 int set_waist_angle = 0;
 int set_counterweight_position = 0;
 
-int set_gripper_L = 90;
-int set_gripper_R = 90;
+int set_gripper_L = 185;
+int set_gripper_R = 5;
 
 const int max_elbow_angle = 170;
 const int min_elbow_angle = 0;
 const int max_shoulder_angle = 190;
 const int min_shoulder_angle = 75;
-const int max_waist_angle = 180;
-const int min_waist_angle = -180;
-const int max_counterweight_range = 48;//mm
+const int max_waist_angle = 90;
+const int min_waist_angle = -90;
+const int max_counterweight_range = 45 / 2 / PI / 7 * 8 * 200; //pulses for 47mm range of motion
 const int min_counterweight_range = 0;
 
 const int elbow_offset = -110;
@@ -84,8 +84,6 @@ const int lower_arm_length = 386;//include gripper length
 Position setpoint = {100, 0, 0};
 Position currentpoint;
 float pos_allow_error_half_width = 10;
-
-boolean counterweight_init = false;
 
 void setup()
 {
@@ -124,19 +122,9 @@ void setup()
   gripper_R.attach(servogripper_R_pin);
   gripper_L.write(set_gripper_L);
   gripper_R.write(set_gripper_R);
-  //Serial.println("Counterweight reset position");
-  //  while (digitalRead(counterweight_endstop_pin))
-  //  {
-  //    if (counterweight_init = false)
-  //    {
-  //      counterweightstepper.setSpeed(30);
-  //      counterweight_init = true;
-  //    }
-  //
-  //    counterweightstepper.runSpeed();
-  //  }
-  //  counterweightstepper.stop();
-  //Serial.println("Counterweight reset done");
+  Serial.println("Counterweight reset position");
+  resetConterweightPosition();
+  Serial.println("Counterweight reset done");
 
   MsTimer2::set(20, getAngle); // 20ms period
   MsTimer2::start();
@@ -229,10 +217,18 @@ void loop()
     else if (inputString == "c")
     {
       counterweightstepper.move(1000);
+      if (counterweightstepper.targetPosition() > max_counterweight_range)
+      {
+        counterweightstepper.moveTo(max_counterweight_range);
+      }
     }
     else if (inputString == "v")
     {
       counterweightstepper.move(-1000);
+      if (counterweightstepper.targetPosition() < min_counterweight_range)
+      {
+        counterweightstepper.moveTo(min_counterweight_range);
+      }
     }
     else if (inputString == "t")
     {
@@ -276,5 +272,18 @@ void serialEvent()
       inputString += c;
     }
   }
+}
+
+void resetConterweightPosition()
+{
+  while (digitalRead(counterweight_endstop_pin))
+  {
+
+    digitalWrite(13, HIGH);
+    digitalWrite(12, HIGH);
+    delay(3);
+    digitalWrite(12, LOW);
+  }
+  counterweightstepper.setCurrentPosition(min_counterweight_range);
 }
 
