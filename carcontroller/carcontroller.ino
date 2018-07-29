@@ -7,8 +7,7 @@
 #define DEVICE_NAME "Car"
 
 //Car Control
-//Includes left and right wheel stepper
-//MPU6050 not used due to not enough processing speed to do both accelstepper and MPU6050 feedback
+//Includes left and right wheel stepper and IMU for yaw compensation
 
 MPU6050 mpu6050(Wire);
 
@@ -170,11 +169,11 @@ void loop()
     {
       Serial.println(DEVICE_NAME);
     }
-    else if (inputString == "power off")
+    else if (inputString == "pwroff")
     {
       leftstepper.disableOutputs();
     }
-    else if (inputString == "power on")
+    else if (inputString == "pwron")
     {
       leftstepper.enableOutputs();
     }
