@@ -66,10 +66,15 @@ Wire: I2C library
  2. Add glue gun on gripper to increase friction. fixed
  3. Is Cooling enough? 
  4. Endstop need to get closer a little to the counterweight. fixed
- 5. Why counterweight is not moving in initialization? Using runSpeed wrongly? 
+ 5. Why counterweight is not moving in initialization? Using runSpeed wrongly?  fixed
  6. Connect servo L and R correctly 
  7. Waist timing belt getting loose
- 8. Cable entangling between car and arm. Make waist a little taller 
+ 8. Cable entangling between car and arm. Make waist a little taller. fixed
  9. Waist plate is bending due to heavy counterweight. Make thicker waist plate.　fixed
  10. Why MPU6050_tockn not working properly? Check thoroughly.  fixed
- 11.Complete feedback control on arm 
+ 11. Complete feedback control on arm. fixed
+ 12. Elbow motor gearbox may have some problem, high friction
+ 13. tuning sensor offsets and servo angle offset parameters
+ 14. tuning Kp and error width
+ 15. add tensioner on waist yaw timing belt, too loose now.
+ 
