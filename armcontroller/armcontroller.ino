@@ -34,9 +34,9 @@ const int elbow_potentiometer_pin = A0; //Abort
 const int shoulder_potentiometer_pin = A1; //Hold
 const int counterweight_endstop_pin = 11;//Z-endstop
 
-const int max_shoulder_sp = 1000;
-const int max_elbow_sp = 1000;
-const int max_waist_sp = 1000;
+const int max_shoulder_sp = 300;
+const int max_elbow_sp = 300;
+const int max_waist_yaw_sp = 300;
 const int max_counterweight_sp = 500;
 
 
@@ -56,9 +56,9 @@ int waist_yaw_sp_diff;
 int elbow_sp_diff;
 int shoulder_sp_diff;
 
-int waist_yaw_acc = 100;
-int elbow_acc = 100;
-int shoulder_acc = 100;;
+int waist_yaw_acc = 50;
+int elbow_acc = 50;
+int shoulder_acc = 20;
 
 float filter_a = 0.3;
 
@@ -103,13 +103,13 @@ float error_waist_pitch;
 
 int compensation_waist_pitch;
 
-int kp_elbow = 40;
+int kp_elbow = 80;
 int kp_shoulder = 20;
-int kp_waist_yaw = 40;
+int kp_waist_yaw = 80;
 int kp_waist_pitch = 20;
 
 int error_width_elbow = 5;
-int error_width_shoulder = 5;
+int error_width_shoulder = 1;
 int error_width_waist_yaw = 1;
 int error_width_waist_pitch = 8;
 
@@ -142,7 +142,7 @@ void setup()
 
   waistyawstepper.setEnablePin(8);
   waistyawstepper.setPinsInverted(false, false, true);
-  waistyawstepper.setMaxSpeed(max_waist_sp);
+  waistyawstepper.setMaxSpeed(max_waist_yaw_sp);
   waistyawstepper.setAcceleration(50);
   waistyawstepper.enableOutputs();
 
@@ -237,6 +237,10 @@ void loop()
       compensation_waist_pitch = 0;
     }
 
+    set_waist_yaw_sp = constrain(set_waist_yaw_sp, -max_waist_yaw_sp, max_waist_yaw_sp);
+    set_shoulder_sp = constrain(set_shoulder_sp, -max_shoulder_sp, max_shoulder_sp);
+    set_elbow_sp = constrain(set_elbow_sp, -max_elbow_sp, max_shoulder_sp);
+
     waist_yaw_sp_diff = set_waist_yaw_sp - waist_yaw_sp;
     shoulder_sp_diff = set_shoulder_sp - shoulder_sp;
     elbow_sp_diff = set_elbow_sp - elbow_sp;
@@ -300,28 +304,28 @@ void loop()
 
   if (reportMetro.check() == 1) //1sec
   {
-    Serial.print(current_shoulder_angle);
-    Serial.print("->");
-    Serial.print(set_shoulder_angle);
-    Serial.print("(");
-    Serial.print(set_shoulder_sp);
-    Serial.print(") ");
-    Serial.print(current_elbow_angle);
-    Serial.print("->");
-    Serial.print(set_elbow_angle);
-    Serial.print("(");
-    Serial.print(set_elbow_sp);
-    Serial.print(") ");
-    Serial.print(current_waist_yaw_angle);
-    Serial.print("->");
-    Serial.print(set_waist_yaw_angle);
-    Serial.print("(");
-    Serial.print(set_waist_yaw_sp);
-    Serial.print(") ");
-    Serial.print(current_waist_pitch_angle);
-    Serial.print("(");
-    Serial.print(counterweightstepper.targetPosition());
-    Serial.println(")");
+    //    Serial.print(current_shoulder_angle);
+    //    Serial.print("->");
+    //    Serial.print(set_shoulder_angle);
+    //    Serial.print("(");
+    //    Serial.print(set_shoulder_sp);
+    //    Serial.print(") ");
+    //    Serial.print(current_elbow_angle);
+    //    Serial.print("->");
+    //    Serial.print(set_elbow_angle);
+    //    Serial.print("(");
+    //    Serial.print(set_elbow_sp);
+    //    Serial.print(") ");
+    //    Serial.print(current_waist_yaw_angle);
+    //    Serial.print("->");
+    //    Serial.print(set_waist_yaw_angle);
+    //    Serial.print("(");
+    //    Serial.print(set_waist_yaw_sp);
+    //    Serial.print(") ");
+    //    Serial.print(current_waist_pitch_angle);
+    //    Serial.print("(");
+    //    Serial.print(counterweightstepper.targetPosition());
+    //    Serial.println(")");
   }
 
   if (stringComplete)
@@ -332,6 +336,8 @@ void loop()
       set_shoulder_angle = arg1;
       set_elbow_angle = arg2;
       set_waist_yaw_angle = arg3;
+      set_gripper_L = arg4;
+      set_gripper_R = arg5;
     }
     else if (sscanf(inputString.c_str(), "R%d %d %d", &arg1, &arg2, &arg3) == 3)
     {
