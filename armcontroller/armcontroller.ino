@@ -3,11 +3,11 @@
 #include <MsTimer2.h>
 #include <AccelStepper.h>
 #include <Metro.h>
-//#include "Position.h"
 #include <Servo.h>
 
 #define DEVICE_NAME "Arm"
-#define DEFAULT_ELBOW_ANGLE 90
+
+#define DEFAULT_ELBOW_ANGLE 180
 #define DEFAULT_SHOULDER_ANGLE 110
 #define DEFAULT_WAIST_YAW_ANGLE 0
 #define DEFAULT_GRIPPER_L_ANGLE 180
@@ -34,9 +34,9 @@ const int elbow_potentiometer_pin = A0; //Abort
 const int shoulder_potentiometer_pin = A1; //Hold
 const int counterweight_endstop_pin = 11;//Z-endstop
 
-const int max_shoulder_sp = 300;
-const int max_elbow_sp = 300;
-const int max_waist_yaw_sp = 300;
+const int max_shoulder_sp = 600;
+const int max_elbow_sp = 500;
+const int max_waist_yaw_sp = 1000;
 const int max_counterweight_sp = 500;
 
 
@@ -56,8 +56,8 @@ int waist_yaw_sp_diff;
 int elbow_sp_diff;
 int shoulder_sp_diff;
 
-int waist_yaw_acc = 50;
-int elbow_acc = 50;
+int waist_yaw_acc = 100;
+int elbow_acc = 100;
 int shoulder_acc = 20;
 
 float filter_a = 0.3;
@@ -69,6 +69,11 @@ int current_shoulder_angle;
 int current_waist_yaw_angle;
 int current_waist_pitch_angle;
 //int current_counterweight_position = 0;
+
+float shoulder_effectivity;
+float elbow_effectivity;
+float shoulder_stall_threshold=1000;
+float elbow_stall_threshold=4000;
 
 int set_elbow_angle = DEFAULT_ELBOW_ANGLE;
 int set_shoulder_angle = DEFAULT_SHOULDER_ANGLE;
@@ -103,12 +108,12 @@ float error_waist_pitch;
 
 int compensation_waist_pitch;
 
-int kp_elbow = 80;
-int kp_shoulder = 20;
+int kp_elbow = 30;
+int kp_shoulder = 40;
 int kp_waist_yaw = 80;
 int kp_waist_pitch = 20;
 
-int error_width_elbow = 5;
+int error_width_elbow = 2;
 int error_width_shoulder = 1;
 int error_width_waist_yaw = 1;
 int error_width_waist_pitch = 8;
@@ -124,7 +129,7 @@ void setup()
   inputString.reserve(25);
   Serial.begin(115200);
   Wire.begin();
-  Wire.setClock(400000);
+  Wire.setClock(200000);
   mpu6050.begin();
   mpu6050.calcGyroOffsets(true);
 
@@ -302,31 +307,31 @@ void loop()
     waistyawstepper.setSpeed(waist_yaw_sp);
   }
 
-  if (reportMetro.check() == 1) //1sec
-  {
-    //    Serial.print(current_shoulder_angle);
-    //    Serial.print("->");
-    //    Serial.print(set_shoulder_angle);
-    //    Serial.print("(");
-    //    Serial.print(set_shoulder_sp);
-    //    Serial.print(") ");
-    //    Serial.print(current_elbow_angle);
-    //    Serial.print("->");
-    //    Serial.print(set_elbow_angle);
-    //    Serial.print("(");
-    //    Serial.print(set_elbow_sp);
-    //    Serial.print(") ");
-    //    Serial.print(current_waist_yaw_angle);
-    //    Serial.print("->");
-    //    Serial.print(set_waist_yaw_angle);
-    //    Serial.print("(");
-    //    Serial.print(set_waist_yaw_sp);
-    //    Serial.print(") ");
-    //    Serial.print(current_waist_pitch_angle);
-    //    Serial.print("(");
-    //    Serial.print(counterweightstepper.targetPosition());
-    //    Serial.println(")");
-  }
+  //  if (reportMetro.check() == 1) //1sec
+  //  {
+  //        Serial.print(current_shoulder_angle);
+  //        Serial.print("->");
+  //        Serial.print(set_shoulder_angle);
+  //        Serial.print("(");
+  //        Serial.print(set_shoulder_sp);
+  //        Serial.print(") ");
+  //        Serial.print(current_elbow_angle);
+  //        Serial.print("->");
+  //        Serial.print(set_elbow_angle);
+  //        Serial.print("(");
+  //        Serial.print(set_elbow_sp);
+  //        Serial.print(") ");
+  //        Serial.print(current_waist_yaw_angle);
+  //        Serial.print("->");
+  //        Serial.print(set_waist_yaw_angle);
+  //        Serial.print("(");
+  //        Serial.print(set_waist_yaw_sp);
+  //        Serial.print(") ");
+  //        Serial.print(current_waist_pitch_angle);
+  //        Serial.print("(");
+  //        Serial.print(counterweightstepper.targetPosition());
+  //        Serial.println(")");
+  //  }
 
   if (stringComplete)
   {
@@ -371,6 +376,14 @@ void loop()
       set_shoulder_angle = DEFAULT_SHOULDER_ANGLE;
       set_waist_yaw_angle = DEFAULT_WAIST_YAW_ANGLE;
       // Serial.println("Done");
+    }
+    else if (inputString == "st") //report current angle status
+    {
+      Serial.print(current_shoulder_angle);
+      Serial.print(" ");
+      Serial.print(current_elbow_angle);
+      Serial.print(" ");
+      Serial.println(current_waist_yaw_angle);
     }
     //    else if (inputString == "w")
     //    {
