@@ -131,7 +131,7 @@ void setup()
   Wire.begin();
   Wire.setClock(100000);
   mpu6050.begin();
-  mpu6050.calcGyroOffsets(true);
+  mpu6050.calcGyroOffsets(false);
 
   shoulderstepper.setEnablePin(8);
   shoulderstepper.setPinsInverted(false, false, true);
@@ -162,9 +162,9 @@ void setup()
   gripper_R.attach(servogripper_R_pin);
   gripper_L.write(set_gripper_L);
   gripper_R.write(set_gripper_R);
-  Serial.println(F("Counterweight reset position"));
+//  Serial.println(F("Counterweight reset position"));
   resetCounterweightPosition();
-  Serial.println(F("Counterweight reset done"));
+//  Serial.println(F("Counterweight reset done"));
 
   MsTimer2::set(30, getAngle); // 30ms period
   MsTimer2::start();
