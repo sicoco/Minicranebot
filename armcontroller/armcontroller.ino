@@ -7,7 +7,7 @@
 
 #define DEVICE_NAME "Arm"
 
-#define DEFAULT_ELBOW_ANGLE 180
+#define DEFAULT_ELBOW_ANGLE 175
 #define DEFAULT_SHOULDER_ANGLE 110
 #define DEFAULT_WAIST_YAW_ANGLE 0
 #define DEFAULT_GRIPPER_L_ANGLE 180
@@ -83,7 +83,7 @@ int set_counterweight_position = 0;
 int set_gripper_L = DEFAULT_GRIPPER_L_ANGLE;
 int set_gripper_R = DEFAULT_GRIPPER_R_ANGLE;
 
-const int max_elbow_angle = 170;
+const int max_elbow_angle = 175;
 const int min_elbow_angle = 0;
 const int max_shoulder_angle = 190;
 const int min_shoulder_angle = 75;
@@ -98,7 +98,7 @@ const int gripper_L_offset = 5;
 const int gripper_R_offset = 5;
 
 const int elbow_offset = -110;
-const int shoulder_offset = 0;
+const int shoulder_offset = -20;
 //const int waist_yaw_offset = 0;
 
 int error_shoulder;
@@ -129,7 +129,7 @@ void setup()
   inputString.reserve(25);
   Serial.begin(115200);
   Wire.begin();
-  Wire.setClock(200000);
+  Wire.setClock(100000);
   mpu6050.begin();
   mpu6050.calcGyroOffsets(true);
 
@@ -175,8 +175,8 @@ void getAngle()
 {
   current_elbow_value = (1 - filter_a) * current_elbow_value + filter_a * analogRead(elbow_potentiometer_pin);
   current_shoulder_value = (1 - filter_a) * current_shoulder_value + filter_a * analogRead(shoulder_potentiometer_pin);
-  current_elbow_angle = map(current_elbow_value, 0, 1023, 0, 295) + elbow_offset;
-  current_shoulder_angle = map(current_shoulder_value, 0, 1023, 300, 0) + shoulder_offset;
+  current_elbow_angle = map(current_elbow_value, 0, 1023, 0, 335) + elbow_offset;
+  current_shoulder_angle = map(current_shoulder_value, 0, 1023, 330, 0) + shoulder_offset;
 
   current_waist_yaw_angle = mpu6050.getAngleZ();
   current_waist_pitch_angle = mpu6050.getAngleY();
