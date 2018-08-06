@@ -35,15 +35,16 @@ volatile float current_yaw = 0;
 float set_yaw = 0;
 float yaw_error_width = 2.0;
 float kp = 20.0;
-
+float offset_yaw = 0;
 void setup()
 {
-  inputString.reserve(15);
+  inputString.reserve(60);
   Serial.begin(115200);
   Wire.begin();
-  Wire.setClock(400000);
+  Wire.setClock(50000);
   mpu6050.begin();
-  mpu6050.calcGyroOffsets(true);
+  mpu6050.calcGyroOffsets(false);
+//mpu6050.setGyroOffsets(-2.14,-2.60,-2.36);
   // Change these to suit your stepper if you want
   leftstepper.setEnablePin(8);
   leftstepper.setPinsInverted(false, false, true);
@@ -59,18 +60,21 @@ void setup()
 
   MsTimer2::set(20, getAngle); // 20ms period
   MsTimer2::start();
+  delay(5000);
 }
 
 void getAngle()
 {
-  current_yaw = mpu6050.getAngleZ();
+  sei();
+  mpu6050.update();
+  current_yaw = mpu6050.getAngleZ() + offset_yaw;
 }
 
 void loop()
 {
   if (spcontrolMetro.check() == 1)
   {
-    mpu6050.update();
+//    mpu6050.update();
     float error = set_yaw - current_yaw;
     float speed_compensation = 0;
     if (error > yaw_error_width || error < -yaw_error_width) //need compensation for yaw angle;
@@ -164,7 +168,10 @@ void loop()
       }
       rotation = true;
     }
-
+    else if (sscanf(inputString.c_str(), "F%d", &argyaw) == 1) //set yaw offset, because gyro will drift over time
+    {
+      offset_yaw = (float)argyaw;
+    }
     else if (inputString == "name?")
     {
       Serial.println(DEVICE_NAME);
@@ -176,6 +183,10 @@ void loop()
     else if (inputString == "pwron")
     {
       leftstepper.enableOutputs();
+    }
+    else if (inputString == "st")
+    {
+      Serial.println((int)current_yaw);
     }
     else //received any illegal message, stop the motion
     {

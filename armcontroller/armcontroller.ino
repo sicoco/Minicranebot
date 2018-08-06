@@ -37,7 +37,7 @@ const int counterweight_endstop_pin = 11;//Z-endstop
 const int max_shoulder_sp = 600;
 const int max_elbow_sp = 500;
 const int max_waist_yaw_sp = 1000;
-const int max_counterweight_sp = 500;
+const int max_counterweight_sp = 1000;
 
 
 
@@ -72,8 +72,8 @@ int current_waist_pitch_angle;
 
 float shoulder_effectivity;
 float elbow_effectivity;
-float shoulder_stall_threshold=1000;
-float elbow_stall_threshold=4000;
+float shoulder_stall_threshold = 1000;
+float elbow_stall_threshold = 4000;
 
 int set_elbow_angle = DEFAULT_ELBOW_ANGLE;
 int set_shoulder_angle = DEFAULT_SHOULDER_ANGLE;
@@ -87,8 +87,8 @@ const int max_elbow_angle = 175;
 const int min_elbow_angle = 0;
 const int max_shoulder_angle = 190;
 const int min_shoulder_angle = 75;
-const int max_waist_yaw_angle = 90;
-const int min_waist_yaw_angle = -90;
+const int max_waist_yaw_angle = 180;
+const int min_waist_yaw_angle = -180;
 const int max_counterweight_range = 45 / 2 / PI / 7 * 8 * 200; //pulses for 47mm range of motion
 const int min_counterweight_range = 0;
 
@@ -100,6 +100,7 @@ const int gripper_R_offset = 5;
 const int elbow_offset = -110;
 const int shoulder_offset = -20;
 //const int waist_yaw_offset = 0;
+int offset_yaw = 0;
 
 int error_shoulder;
 int error_elbow;
@@ -108,15 +109,15 @@ float error_waist_pitch;
 
 int compensation_waist_pitch;
 
-int kp_elbow = 30;
+int kp_elbow = 40;
 int kp_shoulder = 40;
-int kp_waist_yaw = 80;
-int kp_waist_pitch = 20;
+int kp_waist_yaw = 100;
+int kp_waist_pitch = 100;
 
 int error_width_elbow = 2;
 int error_width_shoulder = 1;
 int error_width_waist_yaw = 1;
-int error_width_waist_pitch = 8;
+int error_width_waist_pitch = 1;
 
 //const int upper_arm_length = 280;
 //const int lower_arm_length = 386;//include gripper length
@@ -126,13 +127,13 @@ int error_width_waist_pitch = 8;
 
 void setup()
 {
-  inputString.reserve(25);
+  inputString.reserve(60);
   Serial.begin(115200);
   Wire.begin();
-  Wire.setClock(100000);
+  Wire.setClock(50000);
   mpu6050.begin();
   mpu6050.calcGyroOffsets(false);
-
+//mpu6050.setGyroOffsets(-1.57,1.87,-0.31);
   shoulderstepper.setEnablePin(8);
   shoulderstepper.setPinsInverted(false, false, true);
   shoulderstepper.setMaxSpeed(max_shoulder_sp);
@@ -162,25 +163,27 @@ void setup()
   gripper_R.attach(servogripper_R_pin);
   gripper_L.write(set_gripper_L);
   gripper_R.write(set_gripper_R);
-//  Serial.println(F("Counterweight reset position"));
-  resetCounterweightPosition();
-//  Serial.println(F("Counterweight reset done"));
+  //  Serial.println(F("Counterweight reset position"));
+//  resetCounterweightPosition();
+  //  Serial.println(F("Counterweight reset done"));
 
-  MsTimer2::set(30, getAngle); // 30ms period
+  MsTimer2::set(40, getAngle); // 40ms period
   MsTimer2::start();
-  delay(3000);
+  delay(1000);
 }
 
 void getAngle()
 {
+  sei();
+  mpu6050.update();
   current_elbow_value = (1 - filter_a) * current_elbow_value + filter_a * analogRead(elbow_potentiometer_pin);
   current_shoulder_value = (1 - filter_a) * current_shoulder_value + filter_a * analogRead(shoulder_potentiometer_pin);
   current_elbow_angle = map(current_elbow_value, 0, 1023, 0, 335) + elbow_offset;
   current_shoulder_angle = map(current_shoulder_value, 0, 1023, 330, 0) + shoulder_offset;
 
-  current_waist_yaw_angle = mpu6050.getAngleZ();
+  current_waist_yaw_angle = mpu6050.getAngleZ() + offset_yaw;
   current_waist_pitch_angle = mpu6050.getAngleY();
-  //  current_counterweight_position = counterweightstepper.currentPosition();
+//  current_counterweight_position = counterweightstepper.currentPosition();
 }
 
 //void calccurPos()
@@ -198,7 +201,6 @@ void loop()
 {
   if (spcontrolMetro.check() == 1)  //50ms
   {
-    mpu6050.update();
     set_gripper_L = constrain(set_gripper_L, min_gripper_angle + gripper_L_offset, max_gripper_angle + gripper_L_offset);
     set_gripper_R = constrain(set_gripper_R, min_gripper_angle + gripper_R_offset, max_gripper_angle + gripper_R_offset);
     gripper_L.write(set_gripper_L);
@@ -336,7 +338,7 @@ void loop()
   if (stringComplete)
   {
     int arg1, arg2, arg3, arg4, arg5;
-    if (sscanf(inputString.c_str(), "R%d %d %d %d %d", &arg1, &arg2, &arg3, &arg4, &arg5) == 5)
+    if (sscanf(inputString.c_str(), "A%d %d %d %d %d", &arg1, &arg2, &arg3, &arg4, &arg5) == 5)
     {
       set_shoulder_angle = arg1;
       set_elbow_angle = arg2;
@@ -344,7 +346,7 @@ void loop()
       set_gripper_L = arg4;
       set_gripper_R = arg5;
     }
-    else if (sscanf(inputString.c_str(), "R%d %d %d", &arg1, &arg2, &arg3) == 3)
+    else if (sscanf(inputString.c_str(), "A%d %d %d", &arg1, &arg2, &arg3) == 3)
     {
       set_shoulder_angle = arg1;
       set_elbow_angle = arg2;
@@ -354,6 +356,10 @@ void loop()
     {
       set_gripper_L = arg4;
       set_gripper_R = arg5;
+    }
+    else if (sscanf(inputString.c_str(), "F%d", &arg1) == 1)
+    {
+      offset_yaw = arg1;
     }
     else if (inputString == "name?")
     {
@@ -369,7 +375,7 @@ void loop()
     }
     else if (inputString == "psrst")//reset pose
     {
-      resetCounterweightPosition();
+//      resetCounterweightPosition();
       set_gripper_L = DEFAULT_GRIPPER_L_ANGLE + gripper_L_offset;
       set_gripper_R = DEFAULT_GRIPPER_R_ANGLE + gripper_R_offset;
       set_elbow_angle = DEFAULT_ELBOW_ANGLE;
@@ -462,7 +468,7 @@ void loop()
   shoulderstepper.runSpeed();
   elbowstepper.runSpeed();
   waistyawstepper.runSpeed();
-  //counterweightstepper.run();
+//  counterweightstepper.run();
 }
 void serialEvent()
 {
