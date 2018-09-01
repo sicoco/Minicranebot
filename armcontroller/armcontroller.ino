@@ -7,11 +7,11 @@
 
 #define DEVICE_NAME "Arm"
 
-#define DEFAULT_ELBOW_ANGLE 175
+#define DEFAULT_ELBOW_ANGLE 135
 #define DEFAULT_SHOULDER_ANGLE 110
 #define DEFAULT_WAIST_YAW_ANGLE 0
-#define DEFAULT_GRIPPER_L_ANGLE 180
-#define DEFAULT_GRIPPER_R_ANGLE 0
+#define DEFAULT_GRIPPER_L_ANGLE 125
+#define DEFAULT_GRIPPER_R_ANGLE 55
 
 //Arm Control
 //Includes waist, shoulder, elbow, counterweight stepper and gripper servos and IMU@arm
@@ -101,6 +101,7 @@ const int elbow_offset = -110;
 const int shoulder_offset = -20;
 //const int waist_yaw_offset = 0;
 int offset_yaw = 0;
+int offset_pitch = 0;
 
 int error_shoulder;
 int error_elbow;
@@ -111,13 +112,13 @@ int compensation_waist_pitch;
 
 int kp_elbow = 40;
 int kp_shoulder = 40;
-int kp_waist_yaw = 100;
-int kp_waist_pitch = 100;
+int kp_waist_yaw = 50;
+int kp_waist_pitch = 50;
 
 int error_width_elbow = 2;
 int error_width_shoulder = 1;
 int error_width_waist_yaw = 1;
-int error_width_waist_pitch = 1;
+float error_width_waist_pitch = 0.2;
 
 //const int upper_arm_length = 280;
 //const int lower_arm_length = 386;//include gripper length
@@ -129,11 +130,7 @@ void setup()
 {
   inputString.reserve(60);
   Serial.begin(115200);
-  Wire.begin();
-  Wire.setClock(50000);
-  mpu6050.begin();
-  mpu6050.calcGyroOffsets(false);
-//mpu6050.setGyroOffsets(-1.57,1.87,-0.31);
+
   shoulderstepper.setEnablePin(8);
   shoulderstepper.setPinsInverted(false, false, true);
   shoulderstepper.setMaxSpeed(max_shoulder_sp);
@@ -155,7 +152,7 @@ void setup()
   counterweightstepper.setEnablePin(8);
   counterweightstepper.setPinsInverted(false, false, true);
   counterweightstepper.setMaxSpeed(max_counterweight_sp);
-  counterweightstepper.setAcceleration(50);
+  counterweightstepper.setAcceleration(1000);
   counterweightstepper.enableOutputs();
 
   pinMode(counterweight_endstop_pin, INPUT);
@@ -164,9 +161,14 @@ void setup()
   gripper_L.write(set_gripper_L);
   gripper_R.write(set_gripper_R);
   //  Serial.println(F("Counterweight reset position"));
-//  resetCounterweightPosition();
+  resetCounterweightPosition();
   //  Serial.println(F("Counterweight reset done"));
-
+  Wire.begin();
+  Wire.setClock(100000);
+  mpu6050.begin();
+  mpu6050.calcGyroOffsets(false);
+  offset_pitch = mpu6050.getAngleY();
+  //mpu6050.setGyroOffsets(-1.57,1.87,-0.31);
   MsTimer2::set(40, getAngle); // 40ms period
   MsTimer2::start();
   delay(1000);
@@ -182,8 +184,8 @@ void getAngle()
   current_shoulder_angle = map(current_shoulder_value, 0, 1023, 330, 0) + shoulder_offset;
 
   current_waist_yaw_angle = mpu6050.getAngleZ() + offset_yaw;
-  current_waist_pitch_angle = mpu6050.getAngleY();
-//  current_counterweight_position = counterweightstepper.currentPosition();
+  current_waist_pitch_angle = mpu6050.getAngleY() - offset_pitch;
+  //  current_counterweight_position = counterweightstepper.currentPosition();
 }
 
 //void calccurPos()
@@ -235,7 +237,7 @@ void loop()
     {
       set_waist_yaw_sp = 0;
     }
-    if (abs(error_waist_pitch) > error_width_waist_pitch)
+    if (abs(error_waist_pitch) >= error_width_waist_pitch)
     {
       compensation_waist_pitch = error_waist_pitch * kp_waist_pitch;
     }
@@ -291,18 +293,22 @@ void loop()
       elbow_sp = set_elbow_sp;
     }
 
-    if (counterweightstepper.targetPosition() -  compensation_waist_pitch >= max_counterweight_range)
-    {
-      counterweightstepper.moveTo(max_counterweight_range);
-    }
-    else if (counterweightstepper.targetPosition() -  compensation_waist_pitch <= min_counterweight_range)
-    {
-      counterweightstepper.moveTo(min_counterweight_range);
-    }
-    else
-    {
-      counterweightstepper.move(compensation_waist_pitch);
-    }
+    //    if (counterweightstepper.targetPosition() -  compensation_waist_pitch >= max_counterweight_range)
+    //    {
+    //      counterweightstepper.moveTo(max_counterweight_range);
+    //    }
+    //    else if (counterweightstepper.targetPosition() -  compensation_waist_pitch <= min_counterweight_range)
+    //    {
+    //      counterweightstepper.moveTo(min_counterweight_range);
+    //    }
+    //    else
+    //    {
+    //      counterweightstepper.move(compensation_waist_pitch);
+    //    }
+    set_counterweight_position -= compensation_waist_pitch;
+    set_counterweight_position = constrain(set_counterweight_position, min_counterweight_range, max_counterweight_range);
+    counterweightstepper.moveTo(-set_counterweight_position);
+    Serial.println(set_counterweight_position);
 
     shoulderstepper.setSpeed(-shoulder_sp);
     elbowstepper.setSpeed(elbow_sp);
@@ -375,7 +381,7 @@ void loop()
     }
     else if (inputString == "psrst")//reset pose
     {
-//      resetCounterweightPosition();
+      //      resetCounterweightPosition();
       set_gripper_L = DEFAULT_GRIPPER_L_ANGLE + gripper_L_offset;
       set_gripper_R = DEFAULT_GRIPPER_R_ANGLE + gripper_R_offset;
       set_elbow_angle = DEFAULT_ELBOW_ANGLE;
@@ -468,7 +474,12 @@ void loop()
   shoulderstepper.runSpeed();
   elbowstepper.runSpeed();
   waistyawstepper.runSpeed();
-//  counterweightstepper.run();
+  counterweightstepper.run();
+
+  //  if (!digitalRead(counterweight_endstop_pin))
+  //  {
+  //    counterweightstepper.setCurrentPosition(min_counterweight_range);
+  //  }
 }
 void serialEvent()
 {
@@ -491,9 +502,18 @@ void resetCounterweightPosition()
 
     digitalWrite(13, HIGH);
     digitalWrite(12, HIGH);
-    delay(3);
+    delay(2);
     digitalWrite(12, LOW);
   }
-  counterweightstepper.setCurrentPosition(min_counterweight_range);
+  delay(500);
+  for (int i = 0 ; i < max_counterweight_range / 2; i++)  //go to midpoint of the counterweight range
+  {
+    digitalWrite(13, LOW);
+    digitalWrite(12, HIGH);
+    delay(2);
+    digitalWrite(12, LOW);
+  }
+  counterweightstepper.setCurrentPosition(-max_counterweight_range / 2);
+
 }
 

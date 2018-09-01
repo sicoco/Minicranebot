@@ -40,11 +40,6 @@ void setup()
 {
   inputString.reserve(60);
   Serial.begin(115200);
-  Wire.begin();
-  Wire.setClock(50000);
-  mpu6050.begin();
-  mpu6050.calcGyroOffsets(false);
-//mpu6050.setGyroOffsets(-2.14,-2.60,-2.36);
   // Change these to suit your stepper if you want
   leftstepper.setEnablePin(8);
   leftstepper.setPinsInverted(false, false, true);
@@ -57,10 +52,15 @@ void setup()
   rightstepper.setMaxSpeed(max_sp);
   rightstepper.setAcceleration(300);
   rightstepper.enableOutputs();
-
+  delay(5000);
+  Wire.begin();
+  Wire.setClock(100000);
+  mpu6050.begin();
+  mpu6050.calcGyroOffsets(false);
+  //mpu6050.setGyroOffsets(-2.14,-2.60,-2.36);
+  
   MsTimer2::set(20, getAngle); // 20ms period
   MsTimer2::start();
-  delay(5000);
 }
 
 void getAngle()
@@ -74,7 +74,7 @@ void loop()
 {
   if (spcontrolMetro.check() == 1)
   {
-//    mpu6050.update();
+    //    mpu6050.update();
     float error = set_yaw - current_yaw;
     float speed_compensation = 0;
     if (error > yaw_error_width || error < -yaw_error_width) //need compensation for yaw angle;
@@ -96,7 +96,6 @@ void loop()
 
     set_left_speed -= speed_compensation;
     set_right_speed += speed_compensation;
-
 
     int left_sp_diff = set_left_speed - left_sp;
     int right_sp_diff = set_right_speed - right_sp;
