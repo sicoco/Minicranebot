@@ -13,3 +13,5 @@
 - able to pick about 100g at gripper and about 500g at elbow
 
 - robot weight about 4kg because it is powered from switching power supply outside its body
+
+[Youtube](https://www.youtube.com/watch?v=HbvBk9CqUA4)
